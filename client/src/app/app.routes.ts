@@ -1,6 +1,6 @@
 import { Routes } from '@angular/router';
 import { Home } from '../features/home/home';
-import { authGuard } from '../core/guards/auth-guard-guard';
+import { authGuard } from '../core/guards/auth-guard';
 import { MemberList } from '../features/members/member-list/member-list';
 import { MemberDetailed } from '../features/members/member-detailed/member-detailed';
 import { Lists } from '../features/lists/lists';

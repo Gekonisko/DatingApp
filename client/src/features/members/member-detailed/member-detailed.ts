@@ -14,7 +14,7 @@ export class MemberDetailed implements OnInit {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   protected member = signal<Member | undefined>(undefined);
-  protected title = signal<string | undefined>('Profile');
+  public title = signal<string | undefined>('Profile');
 
   ngOnInit(): void {
     this.route.data.subscribe({
