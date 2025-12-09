@@ -1,6 +1,8 @@
 ﻿using API.Controllers;
+using API.DTOs;
 using API.Entities;
 using API.Interfaces;
+using API.Tests.Dummies;
 using FluentAssertions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -108,6 +110,135 @@ namespace Api.Tests.Controllers
 
             returned.Should().NotBeNull();
             returned!.Count.Should().Be(2);
+        }
+
+        [Fact]
+        public async Task UpdateMember_ShouldReturnNoContent_WhenUpdateSucceeds()
+        {
+            // Arrange
+            var repoMock = new Mock<IMemberRepository>();
+
+            var memberId = "test-user-id";
+            var existingMember = DummyMemberFactory.Create(id: memberId, displayName: "John Doe");
+
+            repoMock.Setup(r => r.GetMemberForUpdate(memberId))
+                .ReturnsAsync(existingMember);
+
+            repoMock.Setup(r => r.SaveAllAsync())
+                .ReturnsAsync(true);
+
+            var controller = CreateController(repoMock);
+
+            var updateDto = new MemberUpdateDto
+            {
+                DisplayName = "New Name",
+                Description = "New Desc",
+                City = "New City",
+                Country = "New Country"
+            };
+
+            // Act
+            var result = await controller.UpdateMember(updateDto);
+
+            // Assert
+            result.Should().BeOfType<NoContentResult>();
+
+            existingMember.DisplayName.Should().Be("New Name");
+            existingMember.Description.Should().Be("New Desc");
+            existingMember.City.Should().Be("New City");
+            existingMember.Country.Should().Be("New Country");
+
+            // user display name updated too
+            existingMember.User.DisplayName.Should().Be("New Name");
+
+            repoMock.Verify(r => r.Update(existingMember), Times.Once);
+        }
+
+        [Fact]
+        public async Task UpdateMember_ShouldReturnBadRequest_WhenMemberNotFound()
+        {
+            // Arrange
+            var repoMock = new Mock<IMemberRepository>();
+
+            repoMock.Setup(r => r.GetMemberForUpdate("test-user-id"))
+                .ReturnsAsync((Member?)null);
+
+            var controller = CreateController(repoMock);
+
+            var dto = new MemberUpdateDto();
+
+            // Act
+            var result = await controller.UpdateMember(dto);
+
+            // Assert
+            var bad = result as BadRequestObjectResult;
+
+            bad.Should().NotBeNull();
+            bad!.Value.Should().Be("Could not get member");
+        }
+
+        [Fact]
+        public async Task UpdateMember_ShouldReturnBadRequest_WhenSaveFails()
+        {
+            // Arrange
+            var repoMock = new Mock<IMemberRepository>();
+
+            var memberId = "test-user-id";
+            var member = DummyMemberFactory.Create(id: memberId, displayName: "John Doe");
+
+            repoMock.Setup(r => r.GetMemberForUpdate(memberId))
+                .ReturnsAsync(member);
+
+            repoMock.Setup(r => r.SaveAllAsync())
+                .ReturnsAsync(false); // simulate DB failure
+
+            var controller = CreateController(repoMock);
+
+            var dto = new MemberUpdateDto { DisplayName = "New" };
+
+            // Act
+            var result = await controller.UpdateMember(dto);
+
+            // Assert
+            var bad = result as BadRequestObjectResult;
+
+            bad.Should().NotBeNull();
+            bad!.Value.Should().Be("Failed to update member");
+        }
+
+        [Fact]
+        public async Task UpdateMember_ShouldOnlyOverrideProvidedFields()
+        {
+            // Arrange
+            var repoMock = new Mock<IMemberRepository>();
+
+            var memberId = "test-user-id";
+            var member = DummyMemberFactory.Create(id: memberId, displayName: "John Doe");
+
+            repoMock.Setup(r => r.GetMemberForUpdate(memberId))
+                .ReturnsAsync(member);
+
+            repoMock.Setup(r => r.SaveAllAsync())
+                .ReturnsAsync(true);
+
+            var controller = CreateController(repoMock);
+
+            var dto = new MemberUpdateDto
+            {
+                DisplayName = null,   // should NOT change
+                City = "New City"     // should change
+            };
+
+            // Act
+            var result = await controller.UpdateMember(dto);
+
+            // Assert
+            result.Should().BeOfType<NoContentResult>();
+
+            member.DisplayName.Should().Be("Name1");  // unchanged
+            member.City.Should().Be("New City");      // changed
+            member.Description.Should().Be("Desc1");  // unchanged
+            member.Country.Should().Be("Country1");   // unchanged
         }
     }
 }
