@@ -1,4 +1,4 @@
-import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Home } from './home';
 import { Register } from "../account/register/register";
 import { By } from '@angular/platform-browser';

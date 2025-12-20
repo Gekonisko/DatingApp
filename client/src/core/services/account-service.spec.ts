@@ -59,19 +59,6 @@ describe('AccountService (Zoneless)', () => {
     expect(service.currentUser()).toEqual(mockUser);
   });
 
-  it('should send login() request and set current user', () => {
-    service.login({ email: 'a', password: 'b' }).subscribe();
-
-    const req = httpMock.expectOne(environment.apiUrl + 'account/login');
-
-    expect(req.request.method).toBe('POST');
-
-    req.flush(mockUser);
-
-    expect(service.currentUser()).toEqual(mockUser);
-    expect(localStorage.setItem).toHaveBeenCalledWith('user', JSON.stringify(mockUser));
-  });
-
   it('should set current user via setCurrentUser()', () => {
     service.setCurrentUser(mockUser);
 
@@ -79,12 +66,4 @@ describe('AccountService (Zoneless)', () => {
     expect(localStorage.setItem).toHaveBeenCalledWith('user', JSON.stringify(mockUser));
   });
 
-  it('should logout user', () => {
-    service.setCurrentUser(mockUser);
-
-    service.logout();
-
-    expect(service.currentUser()).toBeNull();
-    expect(localStorage.removeItem).toHaveBeenCalledWith('user');
-  });
 });

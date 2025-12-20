@@ -1,13 +1,13 @@
-import { TestBed, fakeAsync, tick } from '@angular/core/testing';
-import { HttpClient, HttpEvent, HttpResponse } from '@angular/common/http';
-import { provideHttpClient } from '@angular/common/http';
-import { withInterceptors } from '@angular/common/http';
-import { of } from 'rxjs';
+import { TestBed } from '@angular/core/testing';
+import { HttpClient, HttpResponse } from '@angular/common/http';
+import { provideHttpClient, withInterceptors } from '@angular/common/http';
+import { provideZonelessChangeDetection } from '@angular/core';
+import { of, delay, firstValueFrom } from 'rxjs';
 
 import { loadingInterceptor } from './loading-interceptor';
 import { BusyService } from '../services/busy-service';
 
-describe('loadingInterceptor (InterceptorFn)', () => {
+describe('loadingInterceptor (Zoneless)', () => {
   let http: HttpClient;
   let busyService: jasmine.SpyObj<BusyService>;
 
@@ -16,6 +16,7 @@ describe('loadingInterceptor (InterceptorFn)', () => {
 
     TestBed.configureTestingModule({
       providers: [
+        provideZonelessChangeDetection(),
         { provide: BusyService, useValue: busyService },
         provideHttpClient(withInterceptors([loadingInterceptor])),
       ],
@@ -28,55 +29,65 @@ describe('loadingInterceptor (InterceptorFn)', () => {
     return new HttpResponse({ status: 200, body: data });
   }
 
-  it('should call busy() before request and idle() after finalize', fakeAsync(() => {
-    const response = mockResponse({ value: 1 });
+  it('should call busy() before request and idle() after finalize', async () => {
+    const response = new HttpResponse({ status: 200, body: { value: 1 } });
 
-    spyOn(http, 'get').and.returnValue(of(response));
+    const nextSpy = jasmine
+      .createSpy()
+      .and.returnValue(of(response).pipe(delay(500)));
 
-    http.get('/test').subscribe();
+    const req = { method: 'GET', url: '/test' } as any;
+
+    await TestBed.runInInjectionContext(async () => {
+      await firstValueFrom(loadingInterceptor(req, nextSpy));
+    });
 
     expect(busyService.busy).toHaveBeenCalledTimes(1);
-
-    tick(500);
-
     expect(busyService.idle).toHaveBeenCalledTimes(1);
-  }));
+  });
 
-
-  it('should delay the response by 500ms', fakeAsync(() => {
+  it('should delay the response by 500ms', async () => {
     const response = mockResponse({ delayed: true });
 
-    spyOn(http, 'get').and.returnValue(of(response));
+    spyOn(http, 'get').and.returnValue(of(response).pipe(delay(500)));
 
     let received = false;
-    http.get('/delay-test').subscribe(() => (received = true));
+
+    const promise = firstValueFrom(
+      http.get('/delay-test').pipe()
+    ).then(() => (received = true));
 
     expect(received).toBeFalse();
 
-    tick(499);
+    await new Promise(res => setTimeout(res, 499));
     expect(received).toBeFalse();
 
-    tick(1); 
+    await promise;
     expect(received).toBeTrue();
-  }));
+  });
 
-  it('should not call next() if GET response is cached', fakeAsync(() => {
-    const response = mockResponse({ first: true });
+  it('should not call next() if GET response is cached', async () => {
+    const response = new HttpResponse({ status: 200, body: { first: true } });
 
     const nextSpy = jasmine.createSpy().and.returnValue(of(response));
 
     const req = { method: 'GET', url: '/cached' } as any;
 
-    loadingInterceptor(req, nextSpy).subscribe();
-    tick(500);
+    await TestBed.runInInjectionContext(async () => {
+      await firstValueFrom(loadingInterceptor(req, nextSpy));
+    });
 
     expect(nextSpy).toHaveBeenCalledTimes(1);
 
     const nextSpy2 = jasmine.createSpy();
-    loadingInterceptor(req, nextSpy2).subscribe(res => {
-      expect(res).toEqual(response);
+
+    await TestBed.runInInjectionContext(async () => {
+      const cached = await firstValueFrom(
+        loadingInterceptor(req, nextSpy2)
+      );
+      expect(cached).toEqual(response);
     });
 
     expect(nextSpy2).not.toHaveBeenCalled();
-  }));
+  });
 });

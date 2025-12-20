@@ -13,9 +13,9 @@ namespace Api.Tests.Controllers
 {
     public class MembersControllerTests
     {
-        private MembersController CreateController(Mock<IMemberRepository> repoMock)
+        private MembersController CreateController(Mock<IMemberRepository> memberMock, Mock<IPhotoService> photoMock)
         {
-            var controller = new MembersController(repoMock.Object);
+            var controller = new MembersController(memberMock.Object, photoMock.Object);
 
             var user = new ClaimsPrincipal(new ClaimsIdentity(new[]
             {
@@ -33,17 +33,18 @@ namespace Api.Tests.Controllers
         [Fact]
         public async Task GetMembers_ShouldReturnListOfMembers()
         {
-            var repoMock = new Mock<IMemberRepository>();
+            var memberMock = new Mock<IMemberRepository>();
+            var photoMock = new Mock<IPhotoService>();
             var members = new List<Member>
             {
                 new Member { Id = "1", DisplayName = "John", Gender = "", City = "", Country = ""},
                 new Member {Id = "2", DisplayName = "Anna", Gender = "", City = "", Country = ""}
             };
 
-            repoMock.Setup(r => r.GetMembersAsync())
+            memberMock.Setup(r => r.GetMembersAsync())
                 .ReturnsAsync(members);
 
-            var controller = CreateController(repoMock);
+            var controller = CreateController(memberMock, photoMock);
 
             var result = await controller.GetMembers();
             var okResult = result.Result as OkObjectResult;
@@ -57,13 +58,14 @@ namespace Api.Tests.Controllers
         [Fact]
         public async Task GetMember_ShouldReturnMember_WhenExists()
         {
-            var repoMock = new Mock<IMemberRepository>();
+            var memberMock = new Mock<IMemberRepository>();
+            var photoMock = new Mock<IPhotoService>();
             var member = new Member { Id = "123", DisplayName = "Alice", Gender = "", City = "", Country = "" };
 
-            repoMock.Setup(r => r.GetMemberByIdAsync("123"))
+            memberMock.Setup(r => r.GetMemberByIdAsync("123"))
                 .ReturnsAsync(member);
 
-            var controller = CreateController(repoMock);
+            var controller = CreateController(memberMock, photoMock);
 
             var result = await controller.GetMember("123");
             var returned = result.Value;
@@ -76,12 +78,12 @@ namespace Api.Tests.Controllers
         [Fact]
         public async Task GetMember_ShouldReturn404_WhenNotFound()
         {
-            var repoMock = new Mock<IMemberRepository>();
-
-            repoMock.Setup(r => r.GetMemberByIdAsync("999"))
+            var memberMock = new Mock<IMemberRepository>();
+            var photoMock = new Mock<IPhotoService>();
+            memberMock.Setup(r => r.GetMemberByIdAsync("999"))
                 .ReturnsAsync((Member?)null);
 
-            var controller = CreateController(repoMock);
+            var controller = CreateController(memberMock, photoMock);
 
             var result = await controller.GetMember("999");
 
@@ -91,18 +93,18 @@ namespace Api.Tests.Controllers
         [Fact]
         public async Task GetMemberPhotos_ShouldReturnPhotosList()
         {
-            var repoMock = new Mock<IMemberRepository>();
-
+            var memberMock = new Mock<IMemberRepository>();
+            var photoMock = new Mock<IPhotoService>();
             var photos = new List<Photo>
             {
                 new Photo { Id = 1, Url = "/test1.jpg" },
                 new Photo { Id = 2, Url = "/test2.jpg" }
             };
 
-            repoMock.Setup(r => r.GetPhotosForMemberAsync("123"))
+            memberMock.Setup(r => r.GetPhotosForMemberAsync("123"))
                 .ReturnsAsync(photos);
 
-            var controller = CreateController(repoMock);
+            var controller = CreateController(memberMock, photoMock);
 
             var result = await controller.GetMemberPhotos("123");
             var okResult = result.Result as OkObjectResult;
@@ -115,19 +117,18 @@ namespace Api.Tests.Controllers
         [Fact]
         public async Task UpdateMember_ShouldReturnNoContent_WhenUpdateSucceeds()
         {
-            // Arrange
-            var repoMock = new Mock<IMemberRepository>();
-
+            var memberMock = new Mock<IMemberRepository>();
+            var photoMock = new Mock<IPhotoService>();
             var memberId = "test-user-id";
             var existingMember = DummyMemberFactory.Create(id: memberId, displayName: "John Doe");
 
-            repoMock.Setup(r => r.GetMemberForUpdate(memberId))
+            memberMock.Setup(r => r.GetMemberForUpdate(memberId))
                 .ReturnsAsync(existingMember);
 
-            repoMock.Setup(r => r.SaveAllAsync())
+            memberMock.Setup(r => r.SaveAllAsync())
                 .ReturnsAsync(true);
 
-            var controller = CreateController(repoMock);
+            var controller = CreateController(memberMock, photoMock);
 
             var updateDto = new MemberUpdateDto
             {
@@ -148,22 +149,21 @@ namespace Api.Tests.Controllers
             existingMember.City.Should().Be("New City");
             existingMember.Country.Should().Be("New Country");
 
-            // user display name updated too
             existingMember.User.DisplayName.Should().Be("New Name");
 
-            repoMock.Verify(r => r.Update(existingMember), Times.Once);
+            memberMock.Verify(r => r.Update(existingMember), Times.Once);
         }
 
         [Fact]
         public async Task UpdateMember_ShouldReturnBadRequest_WhenMemberNotFound()
         {
             // Arrange
-            var repoMock = new Mock<IMemberRepository>();
-
-            repoMock.Setup(r => r.GetMemberForUpdate("test-user-id"))
+            var memberMock = new Mock<IMemberRepository>();
+            var photoMock = new Mock<IPhotoService>();
+            memberMock.Setup(r => r.GetMemberForUpdate("test-user-id"))
                 .ReturnsAsync((Member?)null);
 
-            var controller = CreateController(repoMock);
+            var controller = CreateController(memberMock, photoMock);
 
             var dto = new MemberUpdateDto();
 
@@ -181,18 +181,18 @@ namespace Api.Tests.Controllers
         public async Task UpdateMember_ShouldReturnBadRequest_WhenSaveFails()
         {
             // Arrange
-            var repoMock = new Mock<IMemberRepository>();
-
+            var memberMock = new Mock<IMemberRepository>();
+            var photoMock = new Mock<IPhotoService>();
             var memberId = "test-user-id";
             var member = DummyMemberFactory.Create(id: memberId, displayName: "John Doe");
 
-            repoMock.Setup(r => r.GetMemberForUpdate(memberId))
+            memberMock.Setup(r => r.GetMemberForUpdate(memberId))
                 .ReturnsAsync(member);
 
-            repoMock.Setup(r => r.SaveAllAsync())
+            memberMock.Setup(r => r.SaveAllAsync())
                 .ReturnsAsync(false); // simulate DB failure
 
-            var controller = CreateController(repoMock);
+            var controller = CreateController(memberMock, photoMock);
 
             var dto = new MemberUpdateDto { DisplayName = "New" };
 
@@ -210,18 +210,18 @@ namespace Api.Tests.Controllers
         public async Task UpdateMember_ShouldOnlyOverrideProvidedFields()
         {
             // Arrange
-            var repoMock = new Mock<IMemberRepository>();
-
+            var memberMock = new Mock<IMemberRepository>();
+            var photoMock = new Mock<IPhotoService>();
             var memberId = "test-user-id";
             var member = DummyMemberFactory.Create(id: memberId, displayName: "John Doe");
 
-            repoMock.Setup(r => r.GetMemberForUpdate(memberId))
+            memberMock.Setup(r => r.GetMemberForUpdate(memberId))
                 .ReturnsAsync(member);
 
-            repoMock.Setup(r => r.SaveAllAsync())
+            memberMock.Setup(r => r.SaveAllAsync())
                 .ReturnsAsync(true);
 
-            var controller = CreateController(repoMock);
+            var controller = CreateController(memberMock, photoMock);
 
             var dto = new MemberUpdateDto
             {
