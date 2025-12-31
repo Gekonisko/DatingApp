@@ -7,22 +7,32 @@
       "projectType": "application",
       "schematics": {
         "@schematics/angular:component": {
+          "skipTests": true,
           "path": "src"
         },
         "@schematics/angular:service": {
+          "skipTests": true,
           "path": "src/core/services"
         },
         "@schematics/angular:guard": {
+          "skipTests": true,
           "path": "src/core/guards"
         },
         "@schematics/angular:interceptor": {
+          "skipTests": true,
           "path": "src/core/interceptors"
         },
         "@schematics/angular:resolver": {
+          "skipTests": true,
           "path": "src"
         },
         "@schematics/angular:pipe": {
+          "skipTests": true,
           "path": "src/core/pipes"
+        },
+        "@schematics/angular:directive": {
+          "skipTests": true,
+          "path": "src/shared/directives"
         }
       },
       "root": "",
@@ -32,6 +42,10 @@
         "build": {
           "builder": "@angular/build:application",
           "options": {
+            "outputPath": {
+              "base": "../API/wwwroot",
+              "browser": ""
+            },
             "browser": "src/main.ts",
             "tsConfig": "tsconfig.app.json",
             "assets": [
@@ -49,7 +63,7 @@
               "budgets": [
                 {
                   "type": "initial",
-                  "maximumWarning": "500kB",
+                  "maximumWarning": "600kB",
                   "maximumError": "1MB"
                 },
                 {
@@ -111,8 +125,5 @@
         }
       }
     }
-  },
-  "cli": {
-    "analytics": false
   }
 }

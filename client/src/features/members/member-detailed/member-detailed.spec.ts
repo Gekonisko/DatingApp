@@ -6,6 +6,8 @@ import { BehaviorSubject, Subject, of } from 'rxjs';
 import { Member } from '../../../types/member';
 import { MemberService } from '../../../core/services/member-service';
 import { AccountService } from '../../../core/services/account-service';
+import { PresenceService } from '../../../core/services/presence-service';
+import { LikesService } from '../../../core/services/likes-service';
 import { provideLocationMocks } from '@angular/common/testing';
 
 describe('MemberDetailed (Zoneless)', () => {
@@ -29,6 +31,10 @@ describe('MemberDetailed (Zoneless)', () => {
 
   const mockActivatedRoute: Partial<ActivatedRoute> = {
     data: data$,
+    // provide paramMap as an observable-like with subscribe
+    paramMap: {
+      subscribe: (fn: any) => fn({ get: (key: string) => '1' })
+    } as any,
     snapshot: { paramMap: new Map([['id', '1']]) } as any,
     firstChild: { snapshot: { title: 'Profile' } } as any
   };
@@ -37,12 +43,27 @@ describe('MemberDetailed (Zoneless)', () => {
     events: routerEvents$
   };
 
-  const memberServiceMock = {
-    member: jasmine.createSpy().and.returnValue(of(mockMember))
+  const memberSignal: any = (() => mockMember);
+  memberSignal.update = jasmine.createSpy('update');
+  memberSignal.set = jasmine.createSpy('set');
+
+  const memberServiceMock: any = {
+    member: memberSignal,
+    editMode: (() => false) as any
   };
 
   const accountServiceMock = {
-    currentUser: () => ({ id: '1' })
+    currentUser: () => ({ id: '1' }),
+    setCurrentUser: jasmine.createSpy('setCurrentUser')
+  };
+
+  const presenceServiceMock = {
+    onlineUsers: () => []
+  };
+
+  const likesServiceMock = {
+    likeIds: () => [],
+    toggleLike: jasmine.createSpy('toggleLike')
   };
 
   beforeEach(async () => {
@@ -54,7 +75,9 @@ describe('MemberDetailed (Zoneless)', () => {
         { provide: ActivatedRoute, useValue: mockActivatedRoute },
         { provide: Router, useValue: mockRouter },
         { provide: MemberService, useValue: memberServiceMock },
-        { provide: AccountService, useValue: accountServiceMock }
+        { provide: AccountService, useValue: accountServiceMock },
+        { provide: PresenceService as any, useValue: presenceServiceMock },
+        { provide: LikesService as any, useValue: likesServiceMock }
       ]
     }).compileComponents();
 
@@ -89,11 +112,12 @@ describe('MemberDetailed (Zoneless)', () => {
 
     fixture.detectChanges();
 
-    expect(component.title()).toBe('Photos');
+    expect((component as any).title()).toBe('Photos');
   });
 
   it('should show "Member not found" when member is undefined', () => {
-    component['member'].set(undefined);
+    // make the member signal return undefined
+    (memberServiceMock as any).member = (() => undefined);
 
     fixture.detectChanges();
 

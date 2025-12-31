@@ -1,6 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { ApiError } from '../../types/error';
+import { ApiError } from '../../../types/error';
 
 @Component({
   selector: 'app-server-error',

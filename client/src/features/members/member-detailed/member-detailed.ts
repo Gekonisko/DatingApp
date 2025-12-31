@@ -3,8 +3,10 @@ import { ActivatedRoute, NavigationEnd, Router, RouterLink, RouterLinkActive, Ro
 import { filter } from 'rxjs';
 import { Member } from '../../../types/member';
 import { AgePipe } from '../../../core/pipes/age-pipe';
-import { MemberService } from '../../../core/services/member-service';
 import { AccountService } from '../../../core/services/account-service';
+import { MemberService } from '../../../core/services/member-service';
+import { PresenceService } from '../../../core/services/presence-service';
+import { LikesService } from '../../../core/services/likes-service';
 
 @Component({
   selector: 'app-member-detailed',
@@ -13,21 +15,26 @@ import { AccountService } from '../../../core/services/account-service';
   styleUrl: './member-detailed.css'
 })
 export class MemberDetailed implements OnInit {
+  private route = inject(ActivatedRoute);
   protected memberService = inject(MemberService);
   private accountService = inject(AccountService);
-  
-  private route = inject(ActivatedRoute);
+  protected presenceService = inject(PresenceService);
+  protected likesService = inject(LikesService);
   private router = inject(Router);
-  protected member = signal<Member | undefined>(undefined);
-  public title = signal<string | undefined>('Profile');
+  protected title = signal<string | undefined>('Profile');
+  private routeId = signal<string | null>(null);
   protected isCurrentUser = computed(() => {
-    return this.accountService.currentUser()?.id === this.route.snapshot.paramMap.get('id');
-  })
+    return this.accountService.currentUser()?.id === this.routeId()
+  });
+  protected hasLiked = computed(() => this.likesService.likeIds().includes(this.routeId()!));
+
+  constructor() {
+    this.route.paramMap.subscribe(params => {
+      this.routeId.set(params.get('id'));
+    })
+  }
 
   ngOnInit(): void {
-    this.route.data.subscribe({
-      next: data => this.member.set(data['member'])
-    })
     this.title.set(this.route.firstChild?.snapshot?.title);
 
     this.router.events.pipe(

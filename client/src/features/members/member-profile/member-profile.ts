@@ -1,20 +1,19 @@
-import { Component, HostListener, inject, OnDestroy, OnInit, signal, ViewChild } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
+import { Component, HostListener, inject, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { EditableMember, Member } from '../../../types/member';
 import { DatePipe } from '@angular/common';
+import { MemberService } from '../../../core/services/member-service';
 import { FormsModule, NgForm } from '@angular/forms';
 import { ToastService } from '../../../core/services/toast-service';
-import { MemberService } from '../../../core/services/member-service';
 import { AccountService } from '../../../core/services/account-service';
+import { TimeAgoPipe } from '../../../core/pipes/time-ago-pipe';
 
 @Component({
   selector: 'app-member-profile',
-  imports: [DatePipe, FormsModule],
+  imports: [DatePipe, FormsModule, TimeAgoPipe],
   templateUrl: './member-profile.html',
   styleUrl: './member-profile.css'
 })
-export class MemberProfile implements OnInit, OnDestroy  {
-
+export class MemberProfile implements OnInit, OnDestroy {
   @ViewChild('editForm') editForm?: NgForm;
   @HostListener('window:beforeunload', ['$event']) notify($event: BeforeUnloadEvent) {
     if (this.editForm?.dirty) {
@@ -24,9 +23,6 @@ export class MemberProfile implements OnInit, OnDestroy  {
   private accountService = inject(AccountService);
   protected memberService = inject(MemberService);
   private toast = inject(ToastService);
-  private route = inject(ActivatedRoute);
-  protected member = signal<Member | undefined>(undefined);
-
   protected editableMember: EditableMember = {
     displayName: '',
     description: '',
@@ -59,10 +55,11 @@ export class MemberProfile implements OnInit, OnDestroy  {
         this.editForm?.reset(updatedMember);
       }
     })
+
   }
 
   ngOnDestroy(): void {
-     if (this.memberService.editMode()) {
+    if (this.memberService.editMode()) {
       this.memberService.editMode.set(false);
     }
   }
