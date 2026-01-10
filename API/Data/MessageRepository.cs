@@ -73,11 +73,20 @@ public class MessageRepository(AppDbContext context) : IMessageRepository
 
     public async Task<IReadOnlyList<MessageDto>> GetMessageThread(string currentMemberId, string recipientId)
     {
-        await context.Messages
+        var unread = await context.Messages
             .Where(x => x.RecipientId == currentMemberId
                 && x.SenderId == recipientId && x.DateRead == null)
-            .ExecuteUpdateAsync(setters => setters
-                .SetProperty(x => x.DateRead, DateTime.UtcNow));
+            .ToListAsync();
+
+        if (unread.Any())
+        {
+            foreach (var m in unread)
+            {
+                m.DateRead = DateTime.UtcNow;
+            }
+
+            await context.SaveChangesAsync();
+        }
 
         return await context.Messages
             .Where(x => (x.RecipientId == currentMemberId && x.RecipientDeleted == false
@@ -91,8 +100,11 @@ public class MessageRepository(AppDbContext context) : IMessageRepository
 
     public async Task RemoveConnection(string connectionId)
     {
-        await context.Connections
-            .Where(x => x.ConnectionId == connectionId)
-            .ExecuteDeleteAsync();
+        var conn = await context.Connections.FindAsync(connectionId);
+        if (conn != null)
+        {
+            context.Connections.Remove(conn);
+            await context.SaveChangesAsync();
+        }
     }
 }

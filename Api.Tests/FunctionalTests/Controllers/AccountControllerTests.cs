@@ -1,16 +1,19 @@
-﻿using API.DTOs;
+﻿using API.Data;
+using API.DTOs;
 using FluentAssertions;
-using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 
 namespace Api.Tests.FunctionalTests.Controllers
 {
-    public class AccountControllerTests : IClassFixture<WebApplicationFactory<Program>>
+    public class AccountControllerTests : IClassFixture<CustomWebApplicationFactory>
     {
-        private readonly WebApplicationFactory<Program> _factory;
+        private readonly CustomWebApplicationFactory _factory;
 
-        public AccountControllerTests(WebApplicationFactory<Program> factory)
+        public AccountControllerTests(CustomWebApplicationFactory factory)
         {
             _factory = factory;
         }
@@ -86,7 +89,12 @@ namespace Api.Tests.FunctionalTests.Controllers
             var registerDto = GetTestRegisterDto(email);
 
             // Register user
-            await client.PostAsJsonAsync("/api/account/register", registerDto);
+            var registerResponse = await client.PostAsJsonAsync("/api/account/register", registerDto);
+
+            using var scope = _factory.Services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var userEntity = await db.Users.SingleAsync(u => u.Email == email);
+            client.DefaultRequestHeaders.Add("Cookie", $"refreshToken={userEntity.RefreshToken}");
 
             // Act
             var response = await client.PostAsync("/api/account/refresh-token", null);
@@ -112,8 +120,7 @@ namespace Api.Tests.FunctionalTests.Controllers
             var registerResponse = await client.PostAsJsonAsync("/api/account/register", registerDto);
             var user = await registerResponse.Content.ReadFromJsonAsync<UserDto>();
 
-            // Add token cookie manually for auth
-            client.DefaultRequestHeaders.Add("Cookie", $"refreshToken={user!.Token}");
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", user!.Token);
 
             // Act
             var response = await client.PostAsync("/api/account/logout", null);

@@ -39,7 +39,7 @@ public class MemberRepositoryTests : IntegrationTestBase
             DateOfBirth = DateOnly.FromDateTime(DateTime.UtcNow.AddYears(-30)),
             City = "TestCity",
             Country = "TestCountry",
-            User = new AppUser { Id = "user-1", UserName = "user@test.com", DisplayName = "test user" },
+            User = new AppUser { Id = "member-2", UserName = "user@test.com", DisplayName = "test user" },
             Photos = new List<Photo>
             {
                 new Photo { Url = "photo.jpg" }
@@ -135,6 +135,40 @@ public class MemberRepositoryTests : IntegrationTestBase
     protected async Task SeedMembersAsync(params Member[] members)
     {
         Context.Members.AddRange(members);
+
+        // Ensure corresponding AppUser rows exist for each Member (FK Members.Id -> AspNetUsers.Id)
+        foreach (var m in members)
+        {
+            // If a User navigation was provided, ensure its Id matches the Member.Id
+            if (m.User != null)
+            {
+                m.User.Id = m.Id;
+                // Add the same AppUser instance so EF tracks the relationship correctly
+                var exists = await Context.Users.FindAsync(m.Id);
+                if (exists == null)
+                {
+                    Context.Users.Add(m.User);
+                }
+            }
+            else
+            {
+                var exists = await Context.Users.FindAsync(m.Id);
+                if (exists == null)
+                {
+                    var appUser = new AppUser
+                    {
+                        Id = m.Id,
+                        UserName = m.Id + "@test.local",
+                        NormalizedUserName = (m.Id + "@test.local").ToUpperInvariant(),
+                        Email = m.Id + "@test.local",
+                        NormalizedEmail = (m.Id + "@test.local").ToUpperInvariant(),
+                        DisplayName = m.DisplayName
+                    };
+                    Context.Users.Add(appUser);
+                }
+            }
+        }
+
         await Context.SaveChangesAsync();
     }
 }

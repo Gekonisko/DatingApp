@@ -19,7 +19,9 @@ public abstract class IntegrationTestBase : IAsyncLifetime
             .Options;
 
         Context = new AppDbContext(options);
-        await Context.Database.MigrateAsync();
+        // Use EnsureCreated for the transient test container database to avoid
+        // requiring migrations to be present in the test project.
+        await Context.Database.EnsureCreatedAsync();
     }
 
     public async Task DisposeAsync()

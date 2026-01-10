@@ -1,10 +1,12 @@
-﻿using API.DTOs;
+﻿using API.Data;
+using API.DTOs;
 using API.Entities;
+using API.Helpers;
 using API.Interfaces;
 using FluentAssertions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using System.Net;
@@ -13,11 +15,11 @@ using System.Net.Http.Json;
 
 namespace Api.Tests.FunctionalTests.Controllers
 {
-    public class MembersControllerTests : IClassFixture<WebApplicationFactory<Program>>
+    public class MembersControllerTests : IClassFixture<CustomWebApplicationFactory>
     {
-        private readonly WebApplicationFactory<Program> _factory;
+        private readonly CustomWebApplicationFactory _factory;
 
-        public MembersControllerTests(WebApplicationFactory<Program> factory)
+        public MembersControllerTests(CustomWebApplicationFactory factory)
         {
             _factory = factory;
         }
@@ -32,13 +34,34 @@ namespace Api.Tests.FunctionalTests.Controllers
             {
                 DisplayName = "Test User",
                 Email = email,
-                UserName = email,
-                Member = new Member { DisplayName = "Test User", Gender = "male", City = "City", Country = "Country" }
+                UserName = email
             };
 
             await userManager.CreateAsync(user, "Pa$$w0rd123");
 
-            return await tokenService.CreateToken(user);
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var createdUser = await userManager.FindByEmailAsync(email);
+            if (createdUser != null)
+            {
+                var existingMember = await db.Members.FindAsync(createdUser.Id);
+                if (existingMember == null)
+                {
+                    var member = new Member
+                    {
+                        Id = createdUser.Id,
+                        DisplayName = "Test User",
+                        Gender = "male",
+                        City = "City",
+                        Country = "Country",
+                        DateOfBirth = DateOnly.FromDateTime(DateTime.UtcNow.AddYears(-25))
+                    };
+                    db.Members.Add(member);
+                    await db.SaveChangesAsync();
+                }
+            }
+
+            var tokenUser = await userManager.FindByEmailAsync(email);
+            return await tokenService.CreateToken(tokenUser!);
         }
 
         [Fact]
@@ -48,11 +71,15 @@ namespace Api.Tests.FunctionalTests.Controllers
             var token = await RegisterAndGetTokenAsync("member1@test.com");
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
+            // Create another member so the returned list is not empty
+            await RegisterAndGetTokenAsync("member_other@test.com");
+
             var response = await client.GetAsync("/api/members");
 
             response.StatusCode.Should().Be(HttpStatusCode.OK);
-            var members = await response.Content.ReadFromJsonAsync<IReadOnlyList<Member>>();
-            members.Should().NotBeEmpty();
+            var result = await response.Content.ReadFromJsonAsync<PaginatedResult<Member>>();
+            result.Should().NotBeNull();
+            result!.Items.Should().NotBeEmpty();
         }
 
         [Fact]
@@ -63,8 +90,8 @@ namespace Api.Tests.FunctionalTests.Controllers
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
             using var scope = _factory.Services.CreateScope();
-            var userManager = scope.ServiceProvider.GetRequiredService<UserManager<AppUser>>();
-            var member = await userManager.FindByEmailAsync("member2@test.com");
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var member = await db.Users.Include(u => u.Member).SingleAsync(u => u.Email == "member2@test.com");
 
             var response = await client.GetAsync($"/api/members/{member.Member.Id}");
 

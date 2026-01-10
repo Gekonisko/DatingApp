@@ -16,6 +16,24 @@ public class MessageRepositoryTests : IntegrationTestBase
             new Member { Id = "member-2", DisplayName = "Bob", Gender = "male", City = "City", Country = "Country" }
         );
 
+        // Ensure corresponding AppUser rows exist for FK Members(Id) -> AspNetUsers(Id)
+        foreach (var id in new[] { "member-1", "member-2" })
+        {
+            var exists = await Context.Users.FindAsync(id);
+            if (exists == null)
+            {
+                Context.Users.Add(new API.Entities.AppUser
+                {
+                    Id = id,
+                    UserName = id + "@test.local",
+                    NormalizedUserName = (id + "@test.local").ToUpperInvariant(),
+                    Email = id + "@test.local",
+                    NormalizedEmail = (id + "@test.local").ToUpperInvariant(),
+                    DisplayName = id
+                });
+            }
+        }
+
         await Context.SaveChangesAsync();
     }
 
@@ -243,9 +261,12 @@ public class MessageRepositoryTests : IntegrationTestBase
     [Fact]
     public async Task RemoveConnection_Should_Delete_Connection()
     {
-        var connection = new Connection("conn-2", "Bob");
+        var group = new Group("group-for-conn-2")
+        {
+            Connections = { new Connection("conn-2", "Bob") }
+        };
 
-        Context.Connections.Add(connection);
+        Context.Groups.Add(group);
         await Context.SaveChangesAsync();
 
         var repo = CreateRepository();

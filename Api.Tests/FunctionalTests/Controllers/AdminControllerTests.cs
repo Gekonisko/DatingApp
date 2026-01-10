@@ -1,19 +1,19 @@
-﻿using API.Entities;
+﻿using API.Data;
+using API.Entities;
 using API.Interfaces;
 using FluentAssertions;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using System.Net;
 using System.Net.Http.Json;
 
 namespace Api.Tests.FunctionalTests.Controllers
 {
-    public class AdminControllerTests : IClassFixture<WebApplicationFactory<Program>>
+    public class AdminControllerTests : IClassFixture<CustomWebApplicationFactory>
     {
-        private readonly WebApplicationFactory<Program> _factory;
+        private readonly CustomWebApplicationFactory _factory;
 
-        public AdminControllerTests(WebApplicationFactory<Program> factory)
+        public AdminControllerTests(CustomWebApplicationFactory factory)
         {
             _factory = factory;
         }
@@ -22,21 +22,41 @@ namespace Api.Tests.FunctionalTests.Controllers
         {
             using var scope = _factory.Services.CreateScope();
             var userManager = scope.ServiceProvider.GetRequiredService<UserManager<AppUser>>();
-
             var user = new AppUser
             {
                 DisplayName = "Admin Test",
                 Email = email,
-                UserName = email,
-                Member = new Member { DisplayName = "Admin Test", Gender = "male", City = "City", Country = "Country" }
+                UserName = email
             };
 
             await userManager.CreateAsync(user, "Pa$$w0rd123");
             if (!string.IsNullOrEmpty(role))
                 await userManager.AddToRoleAsync(user, role);
 
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var createdUser = await userManager.FindByEmailAsync(email);
+            if (createdUser != null)
+            {
+                var existingMember = await db.Members.FindAsync(createdUser.Id);
+                if (existingMember == null)
+                {
+                    var member = new Member
+                    {
+                        Id = createdUser.Id,
+                        DisplayName = "Admin Test",
+                        Gender = "male",
+                        City = "City",
+                        Country = "Country",
+                        DateOfBirth = DateOnly.FromDateTime(DateTime.UtcNow.AddYears(-25))
+                    };
+                    db.Members.Add(member);
+                    await db.SaveChangesAsync();
+                }
+            }
+
             var tokenService = scope.ServiceProvider.GetRequiredService<ITokenService>();
-            return await tokenService.CreateToken(user);
+            var tokenUser = await userManager.FindByEmailAsync(email);
+            return await tokenService.CreateToken(tokenUser!);
         }
 
         [Fact]
@@ -94,13 +114,33 @@ namespace Api.Tests.FunctionalTests.Controllers
 
             using var scope = _factory.Services.CreateScope();
             var uow = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var userManager = scope.ServiceProvider.GetRequiredService<UserManager<AppUser>>();
 
-            // Seed unapproved photo
-            var member = new Member { DisplayName = "PhotoUser", Id = "member1", Gender = "male", City = "City", Country = "Country" };
-            var photo = new Photo { Id = 1, MemberId = member.Id, Url = "url", IsApproved = false };
-            uow.MemberRepository.Update(member);
-            uow.PhotoRepository.RemovePhoto(photo); // ensure no duplicates
-            await uow.Complete();
+            // Ensure a user (and Member) exists via UserManager so relationship keys match
+            var photoUserEmail = "photouser@test.com";
+            var photoUser = await userManager.FindByEmailAsync(photoUserEmail);
+            if (photoUser == null)
+            {
+                photoUser = new AppUser
+                {
+                    DisplayName = "PhotoUser",
+                    Email = photoUserEmail,
+                    UserName = photoUserEmail,
+                    Member = new Member { DisplayName = "PhotoUser", Gender = "male", City = "City", Country = "Country" }
+                };
+                await userManager.CreateAsync(photoUser, "Pa$$w0rd123");
+            }
+
+            // Seed unapproved photo attached to the created member
+            var memberId = photoUser.Member.Id;
+            var photo = new Photo { Id = 1, MemberId = memberId, Url = "url", IsApproved = false };
+            var existingPhoto = await db.Photos.FindAsync(photo.Id);
+            if (existingPhoto == null)
+            {
+                db.Photos.Add(photo);
+                await db.SaveChangesAsync();
+            }
 
             // Act
             var response = await client.GetAsync("/api/admin/photos-to-moderate");
@@ -122,11 +162,32 @@ namespace Api.Tests.FunctionalTests.Controllers
 
             using var scope = _factory.Services.CreateScope();
             var uow = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var userManager = scope.ServiceProvider.GetRequiredService<UserManager<AppUser>>();
 
-            var member = new Member { DisplayName = "PhotoUser2", Id = "member2", Gender = "male", City = "City", Country = "Country" };
-            var photo = new Photo { Id = 2, MemberId = member.Id, Url = "url2", IsApproved = false };
-            uow.MemberRepository.Update(member);
-            await uow.Complete();
+            // Ensure a user (and Member) exists via UserManager so relationship keys match
+            var photoUserEmail2 = "photouser2@test.com";
+            var photoUser2 = await userManager.FindByEmailAsync(photoUserEmail2);
+            if (photoUser2 == null)
+            {
+                photoUser2 = new AppUser
+                {
+                    DisplayName = "PhotoUser2",
+                    Email = photoUserEmail2,
+                    UserName = photoUserEmail2,
+                    Member = new Member { DisplayName = "PhotoUser2", Gender = "male", City = "City", Country = "Country" }
+                };
+                await userManager.CreateAsync(photoUser2, "Pa$$w0rd123");
+            }
+
+            var memberId2 = photoUser2.Member.Id;
+            var photo = new Photo { Id = 2, MemberId = memberId2, Url = "url2", IsApproved = true };
+            var existingPhoto = await db.Photos.FindAsync(photo.Id);
+            if (existingPhoto == null)
+            {
+                db.Photos.Add(photo);
+                await db.SaveChangesAsync();
+            }
 
             // Act
             var response = await client.PostAsync("/api/admin/approve-photo/2", null);

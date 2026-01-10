@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using API.DTOs;
 using API.Entities;
 using API.Extensions;
@@ -19,7 +18,8 @@ namespace API.Controllers
         {
             memberParams.CurrentMemberId = User.GetMemberId();
 
-            return Ok(await uow.MemberRepository.GetMembersAsync(memberParams));
+            var members = await uow.MemberRepository.GetMembersAsync(memberParams);
+            return Ok(members);
         }
 
         [HttpGet("{id}")] // locahost:5001/api/members/bob-id

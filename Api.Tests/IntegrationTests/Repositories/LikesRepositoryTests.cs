@@ -43,6 +43,27 @@ public class LikesRepositoryTests : IntegrationTestBase
         };
 
         Context.Members.AddRange(members);
+        // Also create matching AppUser rows so FK from Members(Id) -> AspNetUsers(Id) is satisfied
+        foreach (var m in members)
+        {
+            var appUser = new API.Entities.AppUser
+            {
+                Id = m.Id,
+                UserName = m.Id + "@test.local",
+                NormalizedUserName = (m.Id + "@test.local").ToUpperInvariant(),
+                Email = m.Id + "@test.local",
+                NormalizedEmail = (m.Id + "@test.local").ToUpperInvariant(),
+                DisplayName = m.DisplayName
+            };
+
+            // Add if not exists
+            var exists = await Context.Users.FindAsync(appUser.Id);
+            if (exists == null)
+            {
+                Context.Users.Add(appUser);
+            }
+        }
+
         await Context.SaveChangesAsync();
     }
 
@@ -191,13 +212,36 @@ public class LikesRepositoryTests : IntegrationTestBase
     {
         await SeedMembersAsync();
 
-        Context.Likes.AddRange(
-            Enumerable.Range(1, 20).Select(i =>
-                new MemberLike
-                {
-                    SourceMemberId = "member-1",
-                    TargetMemberId = "member-2"
-                }));
+        // Create 20 distinct target members and likes from member-1 to each
+        for (int i = 1; i <= 20; i++)
+        {
+            var id = $"member-extra-{i}";
+            var m = new Member
+            {
+                Id = id,
+                DisplayName = $"Extra {i}",
+                DateOfBirth = DateOnly.FromDateTime(DateTime.UtcNow.AddYears(-20 - i)),
+                Gender = "male",
+                City = "City",
+                Country = "Country"
+            };
+            Context.Members.Add(m);
+            Context.Users.Add(new API.Entities.AppUser
+            {
+                Id = id,
+                UserName = id + "@test.local",
+                NormalizedUserName = (id + "@test.local").ToUpperInvariant(),
+                Email = id + "@test.local",
+                NormalizedEmail = (id + "@test.local").ToUpperInvariant(),
+                DisplayName = m.DisplayName
+            });
+
+            Context.Likes.Add(new MemberLike
+            {
+                SourceMemberId = "member-1",
+                TargetMemberId = id
+            });
+        }
 
         await Context.SaveChangesAsync();
 
@@ -214,6 +258,6 @@ public class LikesRepositoryTests : IntegrationTestBase
         var result = await repo.GetMemberLikes(parameters);
 
         result.Items.Should().HaveCount(5);
-        result.Items.Count.Should().Be(20);
+        result.Metadata.TotalCount.Should().Be(20);
     }
 }

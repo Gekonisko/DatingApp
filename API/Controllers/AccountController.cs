@@ -107,12 +107,14 @@ public class AccountController(UserManager<AppUser> userManager, ITokenService t
     [HttpPost("logout")]
     public async Task<ActionResult> Logout()
     {
-        await userManager.Users
-            .Where(x => x.Id == User.GetMemberId())
-            .ExecuteUpdateAsync(setters => setters
-                .SetProperty(x => x.RefreshToken, _ => null)
-                .SetProperty(x => x.RefreshTokenExpiry, _ => null)
-                );
+        var userId = User.GetMemberId();
+        var user = await userManager.FindByIdAsync(userId);
+        if (user != null)
+        {
+            user.RefreshToken = null;
+            user.RefreshTokenExpiry = null;
+            await userManager.UpdateAsync(user);
+        }
 
         Response.Cookies.Delete("refreshToken");
 

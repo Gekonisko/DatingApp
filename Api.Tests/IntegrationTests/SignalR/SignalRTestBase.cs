@@ -1,6 +1,7 @@
 ﻿using API.DTOs;
 using FluentAssertions;
 using Microsoft.AspNetCore.SignalR.Client;
+using Microsoft.AspNetCore.Http.Connections;
 using System.Net;
 using System.Net.Http.Json;
 
@@ -18,16 +19,22 @@ public abstract class SignalRTestBase
 
     protected HubConnection CreateConnection(string token, string userId)
     {
+        var hubUrl = new Uri(Factory.Server.BaseAddress, $"hubs/messages?userId={userId}");
+
         return new HubConnectionBuilder()
-            .WithUrl($"{Factory.Server.BaseAddress}hubs/message?userId={userId}", options =>
+            .WithUrl(hubUrl, options =>
             {
-                options.AccessTokenProvider = () => Task.FromResult(token);
+                options.AccessTokenProvider = () => Task.FromResult<string?>(token);
+                // Force LongPolling (TestServer doesn't support WebSockets) and
+                // route transport HTTP requests to the test server handler
+                options.Transports = HttpTransportType.LongPolling;
+                options.HttpMessageHandlerFactory = _ => Factory.Server.CreateHandler();
             })
             .WithAutomaticReconnect()
             .Build();
     }
 
-    protected async Task<string> RegisterAndLoginAsync(string email)
+    protected async Task<(string Token, string UserId)> RegisterAndLoginAsync(string email)
     {
         var client = Factory.CreateClient();
 
@@ -54,6 +61,6 @@ public abstract class SignalRTestBase
         var loginResponse = await client.PostAsJsonAsync("/api/account/login", login);
         var user = await loginResponse.Content.ReadFromJsonAsync<UserDto>();
 
-        return user!.Token;
+        return (user!.Token, user.Id);
     }
 }

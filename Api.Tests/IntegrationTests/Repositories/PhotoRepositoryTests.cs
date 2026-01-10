@@ -37,6 +37,21 @@ public class PhotoRepositoryTests : IntegrationTestBase
         };
 
         Context.Members.Add(member);
+        // Ensure corresponding AppUser exists for FK Members(Id) -> AspNetUsers(Id)
+        var exists = await Context.Users.FindAsync(member.Id);
+        if (exists == null)
+        {
+            Context.Users.Add(new API.Entities.AppUser
+            {
+                Id = member.Id,
+                UserName = member.Id + "@test.local",
+                NormalizedUserName = (member.Id + "@test.local").ToUpperInvariant(),
+                Email = member.Id + "@test.local",
+                NormalizedEmail = (member.Id + "@test.local").ToUpperInvariant(),
+                DisplayName = member.DisplayName
+            });
+        }
+
         await Context.SaveChangesAsync();
     }
 

@@ -1,9 +1,10 @@
-﻿using API.DTOs;
+﻿using API.Data;
+using API.DTOs;
 using API.Entities;
 using API.Interfaces;
 using FluentAssertions;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using System.Net;
 using System.Net.Http.Headers;
@@ -11,11 +12,11 @@ using System.Net.Http.Json;
 
 namespace Api.Tests.FunctionalTests.Controllers
 {
-    public class MessagesControllerTests : IClassFixture<WebApplicationFactory<Program>>
+    public class MessagesControllerTests : IClassFixture<CustomWebApplicationFactory>
     {
-        private readonly WebApplicationFactory<Program> _factory;
+        private readonly CustomWebApplicationFactory _factory;
 
-        public MessagesControllerTests(WebApplicationFactory<Program> factory)
+        public MessagesControllerTests(CustomWebApplicationFactory factory)
         {
             _factory = factory;
         }
@@ -30,13 +31,34 @@ namespace Api.Tests.FunctionalTests.Controllers
             {
                 DisplayName = "Test User",
                 Email = email,
-                UserName = email,
-                Member = new Member { DisplayName = "Test User", Gender = "male", City = "City", Country = "Country" }
+                UserName = email
             };
 
             await userManager.CreateAsync(user, "Pa$$w0rd123");
 
-            return await tokenService.CreateToken(user);
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var createdUser = await userManager.FindByEmailAsync(email);
+            if (createdUser != null)
+            {
+                var existingMember = await db.Members.FindAsync(createdUser.Id);
+                if (existingMember == null)
+                {
+                    var member = new Member
+                    {
+                        Id = createdUser.Id,
+                        DisplayName = "Test User",
+                        Gender = "male",
+                        City = "City",
+                        Country = "Country",
+                        DateOfBirth = DateOnly.FromDateTime(DateTime.UtcNow.AddYears(-25))
+                    };
+                    db.Members.Add(member);
+                    await db.SaveChangesAsync();
+                }
+            }
+
+            var tokenUser = await userManager.FindByEmailAsync(email);
+            return await tokenService.CreateToken(tokenUser!);
         }
 
         [Fact]
@@ -48,8 +70,8 @@ namespace Api.Tests.FunctionalTests.Controllers
 
             // Get recipient user id
             using var scope = _factory.Services.CreateScope();
-            var userManager = scope.ServiceProvider.GetRequiredService<UserManager<AppUser>>();
-            var recipient = await userManager.FindByEmailAsync("recipient@test.com");
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var recipient = await db.Users.Include(u => u.Member).SingleAsync(u => u.Email == "recipient@test.com");
 
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", senderToken);
 
@@ -76,9 +98,9 @@ namespace Api.Tests.FunctionalTests.Controllers
             var recipientToken = await RegisterAndGetTokenAsync("recipient2@test.com");
 
             using var scope = _factory.Services.CreateScope();
-            var userManager = scope.ServiceProvider.GetRequiredService<UserManager<AppUser>>();
-            var recipient = await userManager.FindByEmailAsync("recipient2@test.com");
-            var sender = await userManager.FindByEmailAsync("sender2@test.com");
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var recipient = await db.Users.Include(u => u.Member).SingleAsync(u => u.Email == "recipient2@test.com");
+            var sender = await db.Users.Include(u => u.Member).SingleAsync(u => u.Email == "sender2@test.com");
 
             // Seed a message
             var uow = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
@@ -109,9 +131,9 @@ namespace Api.Tests.FunctionalTests.Controllers
             var recipientToken = await RegisterAndGetTokenAsync("delete_recipient@test.com");
 
             using var scope = _factory.Services.CreateScope();
-            var userManager = scope.ServiceProvider.GetRequiredService<UserManager<AppUser>>();
-            var recipient = await userManager.FindByEmailAsync("delete_recipient@test.com");
-            var sender = await userManager.FindByEmailAsync("delete_sender@test.com");
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var recipient = await db.Users.Include(u => u.Member).SingleAsync(u => u.Email == "delete_recipient@test.com");
+            var sender = await db.Users.Include(u => u.Member).SingleAsync(u => u.Email == "delete_sender@test.com");
 
             var uow = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
             var message = new Message
