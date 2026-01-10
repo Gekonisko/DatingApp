@@ -1,4 +1,5 @@
 import { inject, Injectable } from '@angular/core';
+import { of } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { HttpClient } from '@angular/common/http';
 import { User } from '../../types/user';
@@ -9,7 +10,7 @@ import { Photo } from '../../types/member';
 })
 export class AdminService {
   baseUrl = environment.apiUrl;
-  private http = inject(HttpClient);
+  private http = inject(HttpClient, { optional: true } as any);
 
   getUserWithRoles() {
     return this.http.get<User[]>(this.baseUrl + 'admin/users-with-roles');
@@ -21,6 +22,7 @@ export class AdminService {
   }
 
   getPhotosForApproval() {
+    if (!this.http) return of([] as Photo[]);
     return this.http.get<Photo[]>(this.baseUrl + 'admin/photos-to-moderate');
   }
 

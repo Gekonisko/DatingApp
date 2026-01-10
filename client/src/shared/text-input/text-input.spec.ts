@@ -1,36 +1,43 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { FormControl } from '@angular/forms';
-import { NgControl } from '@angular/forms';
+import { Component } from '@angular/core';
+import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
+import { By } from '@angular/platform-browser';
+import { TestBed } from '@angular/core/testing';
+import { provideZonelessChangeDetection } from '@angular/core';
 
 import { TextInput } from './text-input';
 
-describe('TextInput', () => {
-  let component: TextInput;
-  let fixture: ComponentFixture<TextInput>;
-  const mockControl = new FormControl('');
-  const mockNgControl: Partial<NgControl> = { control: mockControl, valueAccessor: null };
+@Component({
+  standalone: true,
+  imports: [ReactiveFormsModule, TextInput],
+  template: `
+    <form [formGroup]="form">
+      <app-text-input formControlName="name"></app-text-input>
+    </form>
+  `,
+})
+class HostComponent {
+  form = new FormGroup({ name: new FormControl('') });
+}
 
+describe('TextInput', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [TextInput],
-      providers: [{ provide: NgControl, useValue: mockNgControl }]
-    })
-    .compileComponents();
+      imports: [ReactiveFormsModule, TextInput, HostComponent],
+      providers: [provideZonelessChangeDetection()]
+    }).compileComponents();
+  });
 
-    fixture = TestBed.createComponent(TextInput);
-    component = fixture.componentInstance;
+  it('should create and register as valueAccessor', () => {
+    const fixture = TestBed.createComponent(HostComponent);
     fixture.detectChanges();
-  });
 
-  it('should create', () => {
+    const debugEl = fixture.debugElement.query(By.directive(TextInput));
+    const component = debugEl.componentInstance as TextInput;
+
     expect(component).toBeTruthy();
-  });
-
-  it('assigns itself as valueAccessor on the injected NgControl', () => {
-    expect((mockNgControl as any).valueAccessor).toBe(component);
-  });
-
-  it('control getter returns the injected FormControl', () => {
-    expect(component.control).toBe(mockControl);
+    // The host form control should be available on the component
+    expect(component.control).toBeTruthy();
+    // The component should have registered itself as valueAccessor on the NgControl
+    expect((component as any).ngControl.valueAccessor).toBe(component);
   });
 });

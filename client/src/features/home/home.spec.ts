@@ -34,10 +34,8 @@ describe('Home (zoneless)', () => {
     expect(component['registerMode']()).toBeTrue();
   });
 
-  it('should handle async logic without fakeAsync', async () => {
-    // przyklad async bez zone.js
-    await new Promise(resolve => setTimeout(resolve, 10));
-
+  it('should handle async logic without fakeAsync', () => {
+    // zoneless doesn't need timeouts - components update synchronously
     component.showRegister(true);
     fixture.detectChanges();
 

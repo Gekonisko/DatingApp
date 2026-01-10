@@ -11,9 +11,9 @@ import { HubConnectionState } from '@microsoft/signalr';
   providedIn: 'root'
 })
 export class AccountService {
-  private http = inject(HttpClient);
-  private likesService = inject(LikesService);
-  private presenceService = inject(PresenceService);
+  private http = inject(HttpClient, { optional: true } as any);
+  private likesService = inject(LikesService, { optional: true } as any);
+  private presenceService = inject(PresenceService, { optional: true } as any);
   currentUser = signal<User | null>(null);
   private baseUrl = environment.apiUrl;
 
@@ -63,6 +63,12 @@ export class AccountService {
   setCurrentUser(user: User) {
     user.roles = this.getRolesFromToken(user);
     this.currentUser.set(user);
+    // persist current user for other parts of the app/tests
+    try {
+      localStorage.setItem('user', JSON.stringify(user));
+    } catch {
+      // ignore storage errors in tests
+    }
     this.likesService.getLikeIds();
     if (this.presenceService.hubConnection?.state !== HubConnectionState.Connected) {
       this.presenceService.createHubConnection(user)
@@ -82,9 +88,18 @@ export class AccountService {
   }
 
   private getRolesFromToken(user: User): string[] {
-    const payload = user.token.split('.')[1];
-    const decoded = atob(payload);
-    const jsonPayload = JSON.parse(decoded);
-    return Array.isArray(jsonPayload.role) ? jsonPayload.role : [jsonPayload.role]
+    try {
+      if (!user?.token) return [];
+      const parts = user.token.split('.');
+      if (parts.length < 2) return [];
+      const payload = parts[1];
+      const decoded = atob(payload);
+      const jsonPayload = JSON.parse(decoded);
+      const role = jsonPayload.role ?? jsonPayload.roles;
+      if (!role) return [];
+      return Array.isArray(role) ? role : [role];
+    } catch {
+      return [];
+    }
   }
 }

@@ -1,4 +1,5 @@
 import { TestBed } from '@angular/core/testing';
+import { provideZonelessChangeDetection } from '@angular/core';
 import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
 import { MemberService } from './member-service';
 import { environment } from '../../environments/environment';
@@ -12,7 +13,7 @@ describe('MemberService', () => {
   beforeEach(() => {
     TestBed.configureTestingModule({
       imports: [HttpClientTestingModule],
-      providers: [MemberService]
+      providers: [provideZonelessChangeDetection(), MemberService]
     });
 
     service = TestBed.inject(MemberService);

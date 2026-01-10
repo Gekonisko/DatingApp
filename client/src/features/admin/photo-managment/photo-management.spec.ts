@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideZonelessChangeDetection } from '@angular/core';
 import { of } from 'rxjs';
 
 import { PhotoManagement } from './photo-management';
@@ -23,7 +24,10 @@ describe('PhotoManagment', () => {
 
     await TestBed.configureTestingModule({
       imports: [PhotoManagement],
-      providers: [{ provide: AdminService, useValue: mockAdminService }]
+      providers: [
+        provideZonelessChangeDetection(),
+        { provide: AdminService, useValue: mockAdminService }
+      ]
     })
     .compileComponents();
 

@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideZonelessChangeDetection } from '@angular/core';
 import { of } from 'rxjs';
+import { By } from '@angular/platform-browser';
 
 import { MemberList } from './member-list';
 import { MemberService } from '../../../core/services/member-service';
@@ -39,8 +40,9 @@ describe('MemberList (Zoneless)', () => {
 
   
 
+  const paginated = { items: mockMembers, metadata: { currentPage: 1, totalCount: 2, totalPages: 1, pageSize: 10 } };
   const memberServiceMock = {
-    getMembers: jasmine.createSpy('getMembers').and.returnValue(of(mockMembers))
+    getMembers: jasmine.createSpy('getMembers').and.returnValue(of(paginated))
   };
 
   beforeEach(async () => {
@@ -72,7 +74,7 @@ describe('MemberList (Zoneless)', () => {
 
   it('should render a MemberCard for each member', () => {
     const html: HTMLElement = fixture.nativeElement;
-    const cards = html.querySelectorAll('app-member-card');
+    const cards = fixture.debugElement.queryAll(By.css('app-member-card'));
 
     expect(cards.length).toBe(2);
   });

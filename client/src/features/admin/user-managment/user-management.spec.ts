@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideZonelessChangeDetection } from '@angular/core';
 import { of } from 'rxjs';
 
 import { UserManagement } from './user-management';
@@ -21,7 +22,10 @@ describe('UserManagment', () => {
 
     await TestBed.configureTestingModule({
       imports: [UserManagement],
-      providers: [{ provide: AdminService, useValue: mockAdminService }]
+      providers: [
+        provideZonelessChangeDetection(),
+        { provide: AdminService, useValue: mockAdminService }
+      ]
     })
     .compileComponents();
 

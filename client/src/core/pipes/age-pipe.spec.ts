@@ -5,6 +5,8 @@ describe('AgePipe', () => {
 
   beforeEach(() => {
     pipe = new AgePipe();
+    // Freeze "today" for deterministic age calculations
+    spyOn(Date, 'now').and.returnValue(new Date(2025, 0, 2).valueOf());
   });
 
   it('should calculate age correctly when birthday has passed this year', () => {

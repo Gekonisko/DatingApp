@@ -1,4 +1,5 @@
 import { TestBed } from '@angular/core/testing';
+import { provideZonelessChangeDetection } from '@angular/core';
 import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
 
 import { MessageService } from './message-service';
@@ -12,6 +13,7 @@ describe('MessageService', () => {
     TestBed.configureTestingModule({
       imports: [HttpClientTestingModule],
       providers: [
+        provideZonelessChangeDetection(),
         { provide: 'AccountService', useValue: {} },
         { provide: 'ToastService', useValue: {} }
       ] as any

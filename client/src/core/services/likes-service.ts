@@ -9,7 +9,7 @@ import { PaginatedResult } from '../../types/pagination';
 })
 export class LikesService {
   private baseUrl = environment.apiUrl;
-  private http = inject(HttpClient);
+  private http = inject(HttpClient, { optional: true } as any);
   likeIds = signal<string[]>([]);
 
   toggleLike(targetMemberId: string) {

@@ -1,4 +1,5 @@
 import { TestBed } from '@angular/core/testing';
+import { provideZonelessChangeDetection } from '@angular/core';
 import { HubConnectionState } from '@microsoft/signalr';
 
 import { PresenceService } from './presence-service';
@@ -7,7 +8,9 @@ describe('PresenceService', () => {
   let service: PresenceService;
 
   beforeEach(() => {
-    TestBed.configureTestingModule({});
+    TestBed.configureTestingModule({
+      providers: [provideZonelessChangeDetection(), PresenceService]
+    });
     service = TestBed.inject(PresenceService);
   });
 

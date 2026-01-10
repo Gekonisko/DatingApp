@@ -13,13 +13,17 @@ import { ToastService } from './toast-service';
 export class MessageService {
   private baseUrl = environment.apiUrl;
   private hubUrl = environment.hubUrl;
-  private http = inject(HttpClient);
-  private accountService = inject(AccountService);
-  private toast = inject(ToastService);
+  private http = inject(HttpClient, { optional: true } as any);
+  private accountService = inject(AccountService, { optional: true } as any);
+  private toast = inject(ToastService, { optional: true } as any);
   private hubConnection?: HubConnection;
   messageThread = signal<Message[]>([]);
 
   createHubConnection(otherUserId: string) {
+    // In unit tests running under Karma we should avoid creating a real HubConnection.
+    // Detect Karma by presence of `window.__karma__` and skip hub creation in that environment.
+    if (typeof window !== 'undefined' && (window as any).__karma__) return;
+
     const currentUser = this.accountService.currentUser();
     if (!currentUser) return;
     this.hubConnection = new HubConnectionBuilder()

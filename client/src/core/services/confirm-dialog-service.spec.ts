@@ -1,4 +1,5 @@
 import { TestBed } from '@angular/core/testing';
+import { provideZonelessChangeDetection } from '@angular/core';
 
 import { ConfirmDialogService } from './confirm-dialog-service';
 
@@ -6,7 +7,9 @@ describe('ConfirmDialogService', () => {
   let service: ConfirmDialogService;
 
   beforeEach(() => {
-    TestBed.configureTestingModule({});
+    TestBed.configureTestingModule({
+      providers: [provideZonelessChangeDetection(), ConfirmDialogService]
+    });
     service = TestBed.inject(ConfirmDialogService);
   });
 

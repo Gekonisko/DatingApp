@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideZonelessChangeDetection } from '@angular/core';
 
 import { Paginator } from './paginator';
 
@@ -8,7 +9,8 @@ describe('Paginator', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [Paginator]
+      imports: [Paginator],
+      providers: [provideZonelessChangeDetection()]
     })
     .compileComponents();
 
@@ -22,9 +24,10 @@ describe('Paginator', () => {
   });
 
   it('computes lastItemIndex and emits pageChange on page number change', () => {
-    // set total count
-    (component as any).totalCount.set?.(95);
-    (component as any).totalPages.set?.(10);
+    // set total count via componentRef inputs (standalone signal inputs)
+    fixture.componentRef.setInput('totalCount', 95);
+    fixture.componentRef.setInput('totalPages', 10);
+    fixture.detectChanges();
 
     // initial lastItemIndex = 10
     expect(component.lastItemIndex()).toBe(10);

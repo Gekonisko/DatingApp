@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideZonelessChangeDetection } from '@angular/core';
 
 import { FilterModal } from './filter-modal';
 
@@ -11,7 +12,8 @@ describe('FilterModal', () => {
     localStorage.removeItem('filters');
 
     await TestBed.configureTestingModule({
-      imports: [FilterModal]
+      imports: [FilterModal],
+      providers: [provideZonelessChangeDetection()]
     })
     .compileComponents();
 

@@ -50,7 +50,7 @@ describe('MemberCard (Zoneless)', () => {
     expect(html.textContent).toContain('John Doe');
     expect(html.textContent).toContain('New York');
 
-    const img = html.querySelector('img')!;
+    const img = fixture.debugElement.query(By.css('img'))!.nativeElement as HTMLImageElement;
     expect(img.src).toContain('/test.jpg');
   });
 

@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { NgZone } from '@angular/core';
+import { NgZone, provideZonelessChangeDetection } from '@angular/core';
 import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
 import { AdminService } from './admin-service';
 import { environment } from '../../environments/environment';
@@ -22,7 +22,7 @@ describe('AdminService', () => {
 
     TestBed.configureTestingModule({
       imports: [HttpClientTestingModule],
-      providers: [AdminService, { provide: NgZone, useValue: ngZoneMock }]
+      providers: [provideZonelessChangeDetection(), AdminService, { provide: NgZone, useValue: ngZoneMock }]
     });
 
     service = TestBed.inject(AdminService);

@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideZonelessChangeDetection } from '@angular/core';
 
 import { StarButton } from './star-button';
 
@@ -8,7 +9,8 @@ describe('StarButton', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [StarButton]
+      imports: [StarButton],
+      providers: [provideZonelessChangeDetection()]
     })
     .compileComponents();
 

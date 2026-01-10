@@ -37,10 +37,10 @@ describe('AccountService (Zoneless)', () => {
   beforeEach(() => {
     TestBed.configureTestingModule({
       providers: [
-        provideZonelessChangeDetection(),
         provideHttpClient(),
         provideHttpClientTesting(),
         AccountService,
+        provideZonelessChangeDetection(),
         { provide: LikesService as any, useValue: likesServiceMock },
         { provide: PresenceService as any, useValue: presenceServiceMock }
       ]

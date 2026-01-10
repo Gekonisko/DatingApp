@@ -1,5 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { NgZone, NO_ERRORS_SCHEMA } from '@angular/core';
+import { By } from '@angular/platform-browser';
 import { AccountService } from '../../core/services/account-service';
 
 import { Admin } from './admin';
@@ -40,7 +41,7 @@ describe('Admin', () => {
     expect(component.activeTab).toBe('photos');
 
     const html = fixture.nativeElement as HTMLElement;
-    const tabs = Array.from(html.querySelectorAll('button')) as HTMLButtonElement[];
+    const tabs = fixture.debugElement.queryAll(By.css('button')).map(de => de.nativeElement as HTMLButtonElement);
     const photoTab = tabs.find(b => b.textContent?.trim().includes('Photo moderation'));
     expect(photoTab).toBeTruthy();
     expect(photoTab?.classList.contains('tab-active')).toBeTrue();
@@ -63,7 +64,7 @@ describe('Admin', () => {
     const fixture2 = TestBed.createComponent(Admin);
     fixture2.detectChanges();
     const html2 = fixture2.nativeElement as HTMLElement;
-    const rolesButton = Array.from(html2.querySelectorAll('button')).find(b => b.textContent?.includes('User management'));
+    const rolesButton = fixture2.debugElement.queryAll(By.css('button')).map(de => de.nativeElement as HTMLButtonElement).find(b => b.textContent?.includes('User management'));
     // hidden via [hidden] attribute when not admin
     expect(rolesButton?.hasAttribute('hidden')).toBeTrue();
 

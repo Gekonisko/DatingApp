@@ -15,8 +15,10 @@ const CACHE_DURATION_MS = 5 * 60 * 1000; // 5 mins
 export const loadingInterceptor: HttpInterceptorFn = (req, next) => {
   const busyService = inject(BusyService);
 
-  const generateCacheKey = (url: string, params: HttpParams): string => {
-    const paramString = params.keys().map(key => `${key}=${params.get(key)}`).join('&');
+  const generateCacheKey = (url: string, params?: HttpParams | null): string => {
+    if (!params) return url;
+    const keys = typeof params.keys === 'function' ? params.keys() : [];
+    const paramString = keys.map((key: string) => `${key}=${params.get ? params.get(key) : ''}`).join('&');
     return paramString ? `${url}?${paramString}` : url;
   }
 

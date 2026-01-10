@@ -1,4 +1,5 @@
 import { TestBed } from '@angular/core/testing';
+import { provideZonelessChangeDetection } from '@angular/core';
 import { ResolveFn, Router, RouterStateSnapshot } from '@angular/router';
 import { of, EMPTY } from 'rxjs';
 
@@ -10,7 +11,9 @@ describe('memberResolver', () => {
     TestBed.runInInjectionContext(() => memberResolver(...resolverParameters));
 
   beforeEach(() => {
-    TestBed.configureTestingModule({});
+    TestBed.configureTestingModule({
+      providers: [provideZonelessChangeDetection()]
+    });
   });
 
   it('returns member when id param is present', (done) => {
@@ -20,6 +23,7 @@ describe('memberResolver', () => {
 
     TestBed.configureTestingModule({
       providers: [
+        provideZonelessChangeDetection(),
         { provide: MemberService, useValue: mockMemberService },
         { provide: Router, useValue: mockRouter }
       ]
@@ -46,6 +50,7 @@ describe('memberResolver', () => {
 
     TestBed.configureTestingModule({
       providers: [
+        provideZonelessChangeDetection(),
         { provide: MemberService, useValue: mockMemberService },
         { provide: Router, useValue: mockRouter }
       ]

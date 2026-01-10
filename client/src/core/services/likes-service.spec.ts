@@ -1,4 +1,5 @@
 import { TestBed } from '@angular/core/testing';
+import { provideZonelessChangeDetection } from '@angular/core';
 import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
 
 import { LikesService } from './likes-service';
@@ -10,7 +11,8 @@ describe('LikesService', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      imports: [HttpClientTestingModule]
+      imports: [HttpClientTestingModule],
+      providers: [provideZonelessChangeDetection(), LikesService]
     });
     service = TestBed.inject(LikesService);
     httpMock = TestBed.inject(HttpTestingController);

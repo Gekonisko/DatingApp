@@ -1,8 +1,9 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MemberDetailed } from './member-detailed';
-import { provideZonelessChangeDetection } from '@angular/core';
 import { ActivatedRoute, Router, NavigationEnd } from '@angular/router';
 import { BehaviorSubject, Subject, of } from 'rxjs';
+import { By } from '@angular/platform-browser';
+import { provideZonelessChangeDetection, signal } from '@angular/core';
 import { Member } from '../../../types/member';
 import { MemberService } from '../../../core/services/member-service';
 import { AccountService } from '../../../core/services/account-service';
@@ -26,7 +27,7 @@ describe('MemberDetailed (Zoneless)', () => {
     gender: ''
   };
 
-  const data$ = new BehaviorSubject({ member: mockMember });
+  const data$: BehaviorSubject<any> = new BehaviorSubject({ member: mockMember });
   const routerEvents$ = new Subject<any>();
 
   const mockActivatedRoute: Partial<ActivatedRoute> = {
@@ -40,16 +41,19 @@ describe('MemberDetailed (Zoneless)', () => {
   };
 
   const mockRouter: Partial<Router> = {
-    events: routerEvents$
+    events: routerEvents$,
+    createUrlTree: (..._args: any[]) => ({}) as any,
+    navigate: () => Promise.resolve(true),
+    url: '/',
+    serializeUrl: (url: any) => (typeof url === 'string' ? url : JSON.stringify(url))
   };
 
-  const memberSignal: any = (() => mockMember);
-  memberSignal.update = jasmine.createSpy('update');
-  memberSignal.set = jasmine.createSpy('set');
+  // Create a real signal that can be reset
+  const memberSignal = signal<Member | undefined>(mockMember);
 
   const memberServiceMock: any = {
     member: memberSignal,
-    editMode: (() => false) as any
+    editMode: signal(false)
   };
 
   const accountServiceMock = {
@@ -67,6 +71,9 @@ describe('MemberDetailed (Zoneless)', () => {
   };
 
   beforeEach(async () => {
+    // Reset the member signal to mockMember
+    memberSignal.set(mockMember);
+    
     await TestBed.configureTestingModule({
       imports: [MemberDetailed],
       providers: [
@@ -101,7 +108,7 @@ describe('MemberDetailed (Zoneless)', () => {
     expect(html.textContent).toContain('John Doe');
     expect(html.textContent).toContain('New York');
 
-    const img = html.querySelector('img');
+    const img = fixture.debugElement.query(By.css('img'))?.nativeElement as HTMLImageElement;
     expect(img).toBeTruthy();
     expect(img!.src).toContain('/test.jpg');
   });
@@ -115,10 +122,12 @@ describe('MemberDetailed (Zoneless)', () => {
     expect((component as any).title()).toBe('Photos');
   });
 
-  it('should show "Member not found" when member is undefined', () => {
-    // make the member signal return undefined
-    (memberServiceMock as any).member = (() => undefined);
-
+  it('should show "Member not found" when member is undefined', async () => {
+    // Set the memberService.member signal to undefined
+    memberSignal.set(undefined);
+    
+    fixture.detectChanges();
+    await fixture.whenStable();
     fixture.detectChanges();
 
     const html = fixture.nativeElement as HTMLElement;

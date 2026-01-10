@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideZonelessChangeDetection } from '@angular/core';
 import { ImageUpload } from './image-upload';
 
 describe('ImageUpload', () => {
@@ -8,6 +9,7 @@ describe('ImageUpload', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [ImageUpload], // standalone component
+      providers: [provideZonelessChangeDetection()]
     }).compileComponents();
 
     fixture = TestBed.createComponent(ImageUpload);
